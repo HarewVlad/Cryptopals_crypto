@@ -241,7 +241,7 @@ char *encode_hex_to_base64(const char *string)
 
 char *fixed_xor(const char *str1, const char *str2)
 {
-	assert(strlen(str1) == strlen(str2));
+	// assert(strlen(str1) == strlen(str2));
 	size_t len = strlen(str1);
 	char *result = malloc(len);
 	for (int i = 0; i < len; i++)
@@ -307,6 +307,7 @@ double letters_score[256] =
 	['X'] = 0.150,
 	['Y'] = 1.974,
 	['Z'] = 0.074,
+	[' '] = 12.500,
 };
 
 const char alphabet[] = 
@@ -366,7 +367,23 @@ const char alphabet[] =
 	'z',
 };
 
-const char *break_single_byte_xor(const char *str)
+const char *decode_hex_encoded_string(const char *str)
+{
+	size_t len = strlen(str);
+	assert(len % 2 == 0);
+	char *result = malloc(len / 2);
+	char *p_result = result;
+	unsigned char ch;
+	for (int i = 0; i < len - 1; i += 2)
+	{
+		ch = char_to_digit[str[i]] << 4 | char_to_digit[str[i + 1]];
+		*result++ = ch;
+	}
+	*result = '\0';
+	return p_result;
+}
+
+const char *break_single_byte_xor(const char *str) // string hex encoded
 {
 	size_t len = strlen(str);
 	char *temp = malloc(len);
@@ -375,28 +392,32 @@ const char *break_single_byte_xor(const char *str)
 	const char *final_result;
 	for (int i = 0; i < sizeof(alphabet); i++)
 	{
-		for (int j = 0; j < len; j++)
+		for (int j = 0; j < len - 1; j += 2)
 		{
-			temp[j] = alphabet[i];
+			temp[j] = digit_to_char[alphabet[i] >> 4];
+			temp[j + 1] = digit_to_char[alphabet[i] & 0xF];
 		}
 		temp[len] = '\0';
 
 		const char *result = fixed_xor(str, temp);
+		const char *decoded_result = decode_hex_encoded_string(result);
+		size_t len_decoded = strlen(decoded_result);
 
 		int count = 0;
-		for (int j = 0; j < len; j++)
+		for (int j = 0; j < len_decoded; j++)
 		{
-			count += letters_score[result[j]];
+			count += letters_score[decoded_result[j]];
 		}
 
 		if (max < count)
 		{
 			max = count;
 			ch = alphabet[i];
-			printf("%s\n", result);
+			final_result = decoded_result;
 		}
 	}
-	return ch;
+	printf("Key - %c\nMessage - %s\n", ch, final_result);
+	return final_result;
 }
 
 
@@ -416,11 +437,20 @@ int main(void)
 	const char *result_2 = encode_hex_to_base64(test_2);
 	const char *answer_2 = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
 	assert(strcmp(result_2, answer_2) == 0);
-	
+
 	// Ch_2
 	const char *test_3_1 = "1c0111001f010100061a024b53535009181c";
 	const char *test_3_2 = "686974207468652062756c6c277320657965";
 	const char *result_3 = fixed_xor(test_3_1, test_3_2);
 	const char *answer_3 = "746865206b696420646f6e277420706c6179";
 	assert(strcmp(result_3, answer_3) == 0);
+
+	// Ch_3
+	const char *test_4 = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+	const char *result_4 = break_single_byte_xor(test_4);
+
+	const char *test_5 = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+	const char *result_5 = decode_hex_encoded_string(test_5);
+	const char *answer_5 = "77316?x+x413=x9x(7-6<x7>x:9;76";
+	assert(strcmp(result_5, answer_5) == 0);
 }
