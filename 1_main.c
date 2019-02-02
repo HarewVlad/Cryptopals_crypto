@@ -402,6 +402,7 @@ const char *break_single_byte_xor(const char *str)
 
 int main(void)
 {
+	// Ch_1
 	const char *test_1 = "Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.";
 	const char *result_1 = encode_ascii_to_base64(test_1);
 	const char *answer_1 = "TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ5IGhpcyByZWFzb24sIGJ1dCBieSB0"
@@ -415,7 +416,8 @@ int main(void)
 	const char *result_2 = encode_hex_to_base64(test_2);
 	const char *answer_2 = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
 	assert(strcmp(result_2, answer_2) == 0);
-
+	
+	// Ch_2
 	const char *test_3_1 = "1c0111001f010100061a024b53535009181c";
 	const char *test_3_2 = "686974207468652062756c6c277320657965";
 	const char *result_3 = fixed_xor(test_3_1, test_3_2);
