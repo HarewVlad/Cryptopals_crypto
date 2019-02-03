@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
 
 #include "utils.h"
 
@@ -365,6 +366,19 @@ const char alphabet[] =
 	'x',
 	'y',
 	'z',
+
+	'0',
+	'1',
+	'2',
+	'3',
+	'4',
+	'5',
+	'6',
+	'7',
+	'8',
+	'9',
+	'+',
+	'/',
 };
 
 const char *decode_hex_encoded_string(const char *str)
@@ -383,11 +397,10 @@ const char *decode_hex_encoded_string(const char *str)
 	return p_result;
 }
 
-const char *break_single_byte_xor(const char *str) // string hex encoded
+const char *break_single_byte_xor(const char *str, size_t len) // string hex encoded
 {
-	size_t len = strlen(str);
 	char *temp = malloc(len);
-	char ch;
+	char ch = 0;
 	int max = 0;
 	const char *final_result;
 	for (int i = 0; i < sizeof(alphabet); i++)
@@ -401,8 +414,7 @@ const char *break_single_byte_xor(const char *str) // string hex encoded
 
 		const char *result = fixed_xor(str, temp);
 		const char *decoded_result = decode_hex_encoded_string(result);
-		size_t len_decoded = strlen(decoded_result);
-
+		size_t len_decoded = len / 2; // 2 hex -> 1 character
 		int count = 0;
 		for (int j = 0; j < len_decoded; j++)
 		{
@@ -416,8 +428,46 @@ const char *break_single_byte_xor(const char *str) // string hex encoded
 			final_result = decoded_result;
 		}
 	}
-	printf("Key - %c\nMessage - %s\n", ch, final_result);
+	free(temp);
+
 	return final_result;
+}
+
+
+void read_string_from_file(char *dst, FILE *f)
+{
+	char ch;
+	while ((ch = fgetc(f)) != '\n' && ch != EOF)
+	{
+		*dst++ = ch;
+	}
+	*dst = '\0';
+}
+
+const char *break_single_byte_xor_from_file(FILE *f) // string hex encoded
+{
+	assert(f != 0);
+	char str[256];
+	char ch = 0;
+	int max = 0;
+	const char *final_result;
+	while (read_string_from_file(str, f), *str != '\0')
+	{
+		size_t len = strlen(str);
+		const char *result = break_single_byte_xor(str, len);
+		int count = 0;
+		for (int j = 0; j < len; j++)
+		{
+			count += letters_score[result[j]];
+		}
+
+		if (max < count)
+		{
+			max = count;
+			final_result = result;
+		}
+	}
+	printf("Result - %s\n", final_result);
 }
 
 
@@ -447,10 +497,15 @@ int main(void)
 
 	// Ch_3
 	const char *test_4 = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
-	const char *result_4 = break_single_byte_xor(test_4);
+	const char *result_4 = break_single_byte_xor(test_4, strlen(test_4));
 
 	const char *test_5 = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
 	const char *result_5 = decode_hex_encoded_string(test_5);
 	const char *answer_5 = "77316?x+x413=x9x(7-6<x7>x:9;76";
 	assert(strcmp(result_5, answer_5) == 0);
+
+	FILE *f = fopen("4.txt", "r");
+	assert(f != 0);
+
+	break_single_byte_xor_from_file(f);
 }
