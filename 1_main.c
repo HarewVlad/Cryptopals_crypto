@@ -243,77 +243,7 @@ double letters_score[256] =
 	['X'] = 0.150,
 	['Y'] = 1.974,
 	['Z'] = 0.074,
-	[' '] = 12.500,
-};
-
-const char alphabet[] = 
-{
-	'A',
-	'B',
-	'C',
-	'D',
-	'E',
-	'F',
-	'G',
-	'H',
-	'I',
-	'J',
-	'K',
-	'L',
-	'M',
-	'N',
-	'O',
-	'P',
-	'Q',
-	'R',
-	'S',
-	'T',
-	'U',
-	'V',
-	'W',
-	'X',
-	'Y',
-	'Z',
-
-	'a',
-	'b',
-	'c',
-	'd',
-	'e',
-	'f',
-	'g',
-	'h',
-	'i',
-	'j',
-	'k',
-	'l',
-	'm',
-	'n',
-	'o',
-	'p',
-	'q',
-	'r',
-	's',
-	't',
-	'u',
-	'v',
-	'w',
-	'x',
-	'y',
-	'z',
-
-	'0',
-	'1',
-	'2',
-	'3',
-	'4',
-	'5',
-	'6',
-	'7',
-	'8',
-	'9',
-	'+',
-	'/',
+	[' '] = 8.500,
 };
 
 void fatal(const char *fmt, ...)
@@ -333,6 +263,7 @@ void print_buff(const char *buff, size_t len, const char *fmt)
 	{
 		printf(fmt, buff[i]);
 	}
+	printf("\n");
 }
 
 int my_atoi(const char *source, const char *end, int base)
@@ -361,7 +292,7 @@ int my_atoi(const char *source, const char *end, int base)
 				result += char_to_digit[*source++];
 			}
 			break;
-		case 0xCC: // ascii to hex
+		case 0xCC:
 			while (source != end)
 			{
 				result *= 256;
@@ -515,17 +446,16 @@ const char *decode_hex_encoded_string(const char *str, size_t len)
 	return p_result;
 }
 
-const char *break_single_byte_xor(const char *str, size_t len)
+const char *break_single_byte_xor(const char *str, char *key, size_t len) // TODO: strange errors when double max, double count
 {
 	char *temp = malloc(len);
-	char ch = 0;
 	int max = 0;
 	const char *final_result;
-	for (int i = 0; i < sizeof(alphabet); i++)
+	for (int i = 0; i < 256; i++)
 	{
 		for (int j = 0; j < len; j++)
 		{
-			temp[j] = alphabet[i];
+			temp[j] = i;
 		}
 		temp[len] = '\0';
 
@@ -539,7 +469,7 @@ const char *break_single_byte_xor(const char *str, size_t len)
 		if (max < count)
 		{
 			max = count;
-			ch = alphabet[i];
+			*key = i;
 			final_result = result;
 		}
 	}
@@ -560,7 +490,7 @@ void read_string_from_file(char *dst, FILE *f)
 }
 
 const char *break_single_byte_xor_from_file(FILE *f) // TODO: char str[256] should be char *str = malloc(...);
-{
+{													// TODO: strange errors while double max, double count
 	assert(f != 0);
 	char str[256];
 	char ch = 0;
@@ -571,7 +501,7 @@ const char *break_single_byte_xor_from_file(FILE *f) // TODO: char str[256] shou
 		size_t len = strlen(str);
 		size_t decoded_len = len / 2;
 		const char *decoded_str = decode_hex_encoded_string(str, len);
-		const char *result = break_single_byte_xor(decoded_str, decoded_len);
+		const char *result = break_single_byte_xor(decoded_str, &ch, decoded_len);
 
 		int count = 0;
 		for (int j = 0; j < len; j++)
@@ -602,16 +532,11 @@ const char *repeated_key_xor(const char *str, const char *key, size_t len)
 	return p_result;
 }
 
-int hamming_distance(const char *str1, const char *str2)
+int hamming_distance(const char *str1, const char *str2, size_t len)
 {
-	size_t len_str1 = strlen(str1);
-	size_t len_str2 = strlen(str2);
-
-	assert(len_str1 == len_str2);
-
 	int result = 0;
-	int temp = 0;
-	for (int i = 0; i < len_str1; i++)
+	unsigned int temp = 0;
+	for (int i = 0; i < len; i++)
 	{
 		temp = str1[i] ^ str2[i];
 		for ( ; temp; temp >>= 1)
@@ -619,6 +544,62 @@ int hamming_distance(const char *str1, const char *str2)
 			result += temp & 1;
 		}
 	}
+	return result;
+}
+
+int find_keysize(const char *str, size_t len, int begin, int end)
+{
+	int keysize = 0;
+	double smallest_distance = 100500.0;
+	for (int i = begin; i < end; i++)
+	{
+		char *block_1 = malloc(i);
+		char *block_2 = malloc(i);
+
+		for (int j = 0; j < i; j++)
+		{
+			block_1[j] = str[j];
+			block_2[j] = str[j + i];
+		}
+		block_1[i] = '\0';
+		block_2[i] = '\0';
+
+		int distance = hamming_distance(block_1, block_2, i);
+		double normilized_distance = distance / (double)i;
+
+		if (smallest_distance > normilized_distance)
+		{
+			smallest_distance = normilized_distance;
+			keysize = i;
+		}
+
+		free(block_1);
+		free(block_2);
+	}
+	return keysize;
+}
+
+const char *break_repeated_key_xor(const char *str, size_t len)
+{
+	int keysize = find_keysize(str, len, 2, 40);
+	size_t len_buff = len / keysize;
+	char *key = malloc(keysize);
+	for (int i = 0; i < keysize; i++)
+	{
+		char *buff = malloc(len_buff);
+
+		for (int j = 0, k = 0; j < len; j += keysize + i, k++)
+		{
+			buff[k] = str[j + keysize + i];
+		}
+
+		const char *result = break_single_byte_xor(buff, &key[i], len_buff);
+
+		free(buff);
+	}
+	key[keysize] = '\0';
+	printf("Ch_6 - %s\n", key);
+	const char *result = repeated_key_xor(str, key, len);
 	return result;
 }
 
@@ -656,7 +637,9 @@ void ch_3()
 	size_t test_len = strlen("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
 	size_t test_decoded_len = test_len / 2; // 2 hex - 1 character
 	const char *test = decode_hex_encoded_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736", test_len);
-	const char *result = break_single_byte_xor(test, test_decoded_len);
+	char key = 0;
+	const char *result = break_single_byte_xor(test, &key, test_decoded_len);
+	printf("Ch_3 - %s\n", result);
 }
 
 void ch_4()
@@ -664,7 +647,8 @@ void ch_4()
 	FILE *f = fopen("4.txt", "r");
 	assert(f != 0);
 
-	const char *test = break_single_byte_xor_from_file(f);
+	const char *result = break_single_byte_xor_from_file(f);
+	printf("Ch_4 - %s\n", result);
 
 	fclose(f);
 }
@@ -678,12 +662,6 @@ void ch_5()
 	const char *result_1 = repeated_key_xor(test_1, "ICE", test_1_len);
 	const char *result_2 = repeated_key_xor(test_2, "ICE", test_2_len);
 }
-
-char *break_repeated_key_xor(const char *str, size_t len)
-{
-	
-}
-
 
 int main(void)
 {
@@ -705,7 +683,8 @@ int main(void)
 	// Ch_6
 	const char *test_1 = "this is a test";
 	const char *test_2 = "wokka wokka!!!";
-	int result = hamming_distance(test_1, test_2);
+	size_t len_test_1 = strlen(test_1);
+	int result = hamming_distance(test_1, test_2, len_test_1);
 	int answer = 37;
 	assert(result == answer);
 
@@ -720,4 +699,5 @@ int main(void)
 
 	size_t str_decoded_len = 0;
 	const char *str_decoded = decode_base64_to_ascii(str, &str_decoded_len);
+	const char *test = break_repeated_key_xor(str_decoded, str_decoded_len);
 }
