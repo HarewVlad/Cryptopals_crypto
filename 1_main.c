@@ -560,16 +560,14 @@ const char *break_single_byte_xor_from_file(FILE *f) // TODO: char str[256] shou
 	return final_result;
 }
 
-const char *repeated_key_xor(const char *str, const char *key)
+const char *repeated_key_xor(const char *str, const char *key, size_t len)
 {
-	size_t len_str = strlen(str);
 	size_t len_key = strlen(key);
-	char *result = malloc(len_str * 2); // hex encoded
+	char *result = malloc(len);
 	char *p_result = result;
-	for (int i = 0, j = 0; i < len_str; i++, j++, j %= len_key)
+	for (int i = 0, j = 0; i < len; i++, j++, j %= len_key)
 	{
-		*result++ = digit_to_char[str[i] >> 4 ^ key[j] >> 4];
-		*result++ = digit_to_char[str[i] & 0xF ^ key[j] & 0xF];
+		*result++ = str[i] ^ key[j];
 	}
 	*result = '\0';
 	return p_result;
@@ -638,12 +636,11 @@ int main(void)
 	// Ch_5
 	const char *test_6_1 = "Burning 'em, if you ain't quick and nimble";
 	const char *test_6_2 = "I go crazy when I hear a cymbal";
-	const char *result_6_1 = repeated_key_xor(test_6_1, "ICE");
-	const char *result_6_2 = repeated_key_xor(test_6_2, "ICE");
-	const char *answer_6_1 = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20";
-	const char *answer_6_2 = "0063222663263b223f30633221262b690a652126243b632469203c24212425";
-	assert(strcmp(result_6_1, answer_6_1) == 0);
-	assert(strcmp(result_6_2, answer_6_2) == 0);
+	size_t test_6_1_len = strlen(test_6_1);
+	size_t test_6_2_len = strlen(test_6_2);
+	const char *result_6_1 = repeated_key_xor(test_6_1, "ICE", test_6_1_len);
+	const char *result_6_2 = repeated_key_xor(test_6_2, "ICE", test_6_2_len);
+	print_buff(result_6_1, test_6_1_len, "%c");
 
 	// Ch_6
 	const char *test_7_1 = "this is a test";
