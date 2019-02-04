@@ -81,6 +81,76 @@ const char hex_to_base64[] =
 	'/',
 };
 
+const char base64_to_hex[] = 
+{
+	['A'] = 0,
+	['B'] = 1,
+	['C'] = 2,
+	['D'] = 3,
+	['E'] = 4,
+	['F'] = 5,
+	['G'] = 6,
+	['H'] = 7,
+	['I'] = 8,
+	['J'] = 9,
+	['K'] = 10,
+	['L'] = 11,
+	['M'] = 12,
+	['N'] = 13,
+	['O'] = 14,
+	['P'] = 15,
+	['Q'] = 16,
+	['R'] = 17,
+	['S'] = 18,
+	['T'] = 19,
+	['U'] = 20,
+	['V'] = 21,
+	['W'] = 22,
+	['X'] = 23,
+	['Y'] = 24,
+	['Z'] = 25,
+
+	['a'] = 26,
+	['b'] = 27,
+	['c'] = 28,
+	['d'] = 29,
+	['e'] = 30,
+	['f'] = 31,
+	['g'] = 32,
+	['h'] = 33,
+	['i'] = 34,
+	['j'] = 35,
+	['k'] = 36,
+	['l'] = 37,
+	['m'] = 38,
+	['n'] = 39,
+	['o'] = 40,
+	['p'] = 41,
+	['q'] = 42,
+	['r'] = 43,
+	['s'] = 44,
+	['t'] = 45,
+	['u'] = 46,
+	['v'] = 47,
+	['w'] = 48,
+	['x'] = 49,
+	['y'] = 50,
+	['z'] = 51,
+
+	['0'] = 52,
+	['1'] = 53,
+	['2'] = 54,
+	['3'] = 55,
+	['4'] = 56,
+	['5'] = 57,
+	['6'] = 58,
+	['7'] = 59,
+	['8'] = 60,
+	['9'] = 61,
+	['+'] = 62,
+	['/'] = 63,
+};
+
 uint8_t char_to_digit[256] = {
     ['0'] = 0,
     ['1'] = 1,
@@ -102,22 +172,22 @@ uint8_t char_to_digit[256] = {
 
 char digit_to_char[256] = 
 {
-	[0] = '0',
-	[1] = '1',
-	[2] = '2',
-	[3] = '3',
-	[4] = '4',
-	[5] = '5',
-	[6] = '6',
-	[7] = '7',
-	[8] = '8',
-	[9] = '9',
-	[10] = 'a',
-	[11] = 'b',
-	[12] = 'c',
-	[13] = 'd',
-	[14] = 'e',
-	[15] = 'f',
+	'0',
+	'1',
+	'2',
+	'3',
+	'4',
+	'5',
+	'6',
+	'7',
+	'8',
+	'9',
+	'a',
+	'b',
+	'c',
+	'd',
+	'e',
+	'f',
 };
 
 int my_atoi(const char *source, const char *end, int base)
@@ -200,6 +270,28 @@ char *encode_ascii_to_base64(const char *string)
 	return p_result_string;
 }
 
+char *decode_base64_to_ascii(const char *string, int *string_len)
+{
+	size_t len = strlen(string);
+	char *result = malloc(len);
+	char *p_result = result;
+	unsigned int value = 0;
+	char ch = 0;
+	for (int i = 0; i < len - 3; i += 4)
+	{
+		value = base64_to_hex[string[i]];
+		value = (value <<= 6) | base64_to_hex[string[i + 1]];
+		value = (value <<= 6) | base64_to_hex[string[i + 2]];
+		value = (value <<= 6) | base64_to_hex[string[i + 3]];
+		*result++ = value >> 16 & 0xFF;
+		*result++ = value >> 8 & 0xFF;
+		*result++ = value & 0xFF;
+		*string_len += 3;
+	}
+	*result = '\0';
+	return p_result;
+}
+
 char *encode_hex_to_base64(const char *string)
 {
 	const char *p_string = string;
@@ -240,14 +332,12 @@ char *encode_hex_to_base64(const char *string)
 	return p_result_string;
 }
 
-char *fixed_xor(const char *str1, const char *str2)
+char *fixed_xor(const char *str1, const char *str2, size_t len) // TODO: assert(strlen(str1) == strlen(str2))
 {
-	// assert(strlen(str1) == strlen(str2));
-	size_t len = strlen(str1);
 	char *result = malloc(len);
 	for (int i = 0; i < len; i++)
 	{
-		result[i] = digit_to_char[(char_to_digit[str1[i]] ^ char_to_digit[str2[i]])];
+		result[i] = str1[i] ^ str2[i];
 	}
 	result[len] = '\0';
 	return result;
@@ -381,9 +471,8 @@ const char alphabet[] =
 	'/',
 };
 
-const char *decode_hex_encoded_string(const char *str)
+const char *decode_hex_encoded_string(const char *str, size_t len)
 {
-	size_t len = strlen(str);
 	assert(len % 2 == 0);
 	char *result = malloc(len / 2);
 	char *p_result = result;
@@ -397,7 +486,7 @@ const char *decode_hex_encoded_string(const char *str)
 	return p_result;
 }
 
-const char *break_single_byte_xor(const char *str, size_t len) // string hex encoded
+const char *break_single_byte_xor(const char *str, size_t len)
 {
 	char *temp = malloc(len);
 	char ch = 0;
@@ -405,27 +494,24 @@ const char *break_single_byte_xor(const char *str, size_t len) // string hex enc
 	const char *final_result;
 	for (int i = 0; i < sizeof(alphabet); i++)
 	{
-		for (int j = 0; j < len - 1; j += 2)
+		for (int j = 0; j < len; j++)
 		{
-			temp[j] = digit_to_char[alphabet[i] >> 4];
-			temp[j + 1] = digit_to_char[alphabet[i] & 0xF];
+			temp[j] = alphabet[i];
 		}
 		temp[len] = '\0';
 
-		const char *result = fixed_xor(str, temp);
-		const char *decoded_result = decode_hex_encoded_string(result);
-		size_t len_decoded = len / 2; // 2 hex -> 1 character
+		const char *result = fixed_xor(str, temp, len);
 		int count = 0;
-		for (int j = 0; j < len_decoded; j++)
+		for (int j = 0; j < len; j++)
 		{
-			count += letters_score[decoded_result[j]];
+			count += letters_score[result[j]];
 		}
 
 		if (max < count)
 		{
 			max = count;
 			ch = alphabet[i];
-			final_result = decoded_result;
+			final_result = result;
 		}
 	}
 	free(temp);
@@ -444,7 +530,7 @@ void read_string_from_file(char *dst, FILE *f)
 	*dst = '\0';
 }
 
-const char *break_single_byte_xor_from_file(FILE *f) // string hex encoded
+const char *break_single_byte_xor_from_file(FILE *f) // TODO: char str[256] should be char *str = malloc(...);
 {
 	assert(f != 0);
 	char str[256];
@@ -454,7 +540,10 @@ const char *break_single_byte_xor_from_file(FILE *f) // string hex encoded
 	while (read_string_from_file(str, f), *str != '\0')
 	{
 		size_t len = strlen(str);
-		const char *result = break_single_byte_xor(str, len);
+		size_t decoded_len = len / 2;
+		const char *decoded_str = decode_hex_encoded_string(str, len);
+		const char *result = break_single_byte_xor(decoded_str, decoded_len);
+
 		int count = 0;
 		for (int j = 0; j < len; j++)
 		{
@@ -486,6 +575,26 @@ const char *repeated_key_xor(const char *str, const char *key)
 	return p_result;
 }
 
+int hamming_distance(const char *str1, const char *str2)
+{
+	size_t len_str1 = strlen(str1);
+	size_t len_str2 = strlen(str2);
+
+	assert(len_str1 == len_str2);
+
+	int result = 0;
+	int temp = 0;
+	for (int i = 0; i < len_str1; i++)
+	{
+		temp = str1[i] ^ str2[i];
+		for ( ; temp; temp >>= 1)
+		{
+			result += temp & 1;
+		}
+	}
+	return result;
+}
+
 
 int main(void)
 {
@@ -505,33 +614,46 @@ int main(void)
 	assert(strcmp(result_2, answer_2) == 0);
 
 	// Ch_2
-	const char *test_3_1 = "1c0111001f010100061a024b53535009181c";
-	const char *test_3_2 = "686974207468652062756c6c277320657965";
-	const char *result_3 = fixed_xor(test_3_1, test_3_2);
-	const char *answer_3 = "746865206b696420646f6e277420706c6179";
+	size_t test_3_1_len = strlen("1c0111001f010100061a024b53535009181c");
+	size_t test_3_2_len = strlen("686974207468652062756c6c277320657965");
+	size_t answer_3_len = strlen("746865206b696420646f6e277420706c6179");
+	const char *test_3_1 = decode_hex_encoded_string("1c0111001f010100061a024b53535009181c", test_3_1_len);
+	const char *test_3_2 = decode_hex_encoded_string("686974207468652062756c6c277320657965", test_3_2_len);
+	const char *result_3 = fixed_xor(test_3_1, test_3_2, test_3_1_len);
+	const char *answer_3 = decode_hex_encoded_string("746865206b696420646f6e277420706c6179", answer_3_len);
 	assert(strcmp(result_3, answer_3) == 0);
 
 	// Ch_3
-	const char *test_4 = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
-	const char *result_4 = break_single_byte_xor(test_4, strlen(test_4));
+	size_t test_4_len = strlen("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
+	size_t test_4_decoded_len = test_4_len / 2; // 2 hex - 1 character
+	const char *test_4 = decode_hex_encoded_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736", test_4_len);
+	const char *result_4 = break_single_byte_xor(test_4, test_4_decoded_len);
 
-	const char *test_5 = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
-	const char *result_5 = decode_hex_encoded_string(test_5);
-	const char *answer_5 = "77316?x+x413=x9x(7-6<x7>x:9;76";
-	assert(strcmp(result_5, answer_5) == 0);
-
+	// Ch_4
 	FILE *f = fopen("4.txt", "r");
 	assert(f != 0);
 
-	const char *test_6 = break_single_byte_xor_from_file(f);
+	const char *test_5 = break_single_byte_xor_from_file(f);
 
 	// Ch_5
-	const char *test_7 = "Burning 'em, if you ain't quick and nimble";
-	const char *test_8 = "I go crazy when I hear a cymbal";
-	const char *result_6 = repeated_key_xor(test_7, "ICE");
-	const char *result_7 = repeated_key_xor(test_8, "ICE");
-	const char *answer_6 = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20";
-	const char *answer_7 = "0063222663263b223f30633221262b690a652126243b632469203c24212425";
-	assert(strcmp(result_6, answer_6) == 0);
-	assert(strcmp(result_7, answer_7) == 0);
+	const char *test_6_1 = "Burning 'em, if you ain't quick and nimble";
+	const char *test_6_2 = "I go crazy when I hear a cymbal";
+	const char *result_6_1 = repeated_key_xor(test_6_1, "ICE");
+	const char *result_6_2 = repeated_key_xor(test_6_2, "ICE");
+	const char *answer_6_1 = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20";
+	const char *answer_6_2 = "0063222663263b223f30633221262b690a652126243b632469203c24212425";
+	assert(strcmp(result_6_1, answer_6_1) == 0);
+	assert(strcmp(result_6_2, answer_6_2) == 0);
+
+	// Ch_6
+	const char *test_7_1 = "this is a test";
+	const char *test_7_2 = "wokka wokka!!!";
+	int result_7 = hamming_distance(test_7_1, test_7_2);
+	int answer_7 = 37;
+	assert(result_7 == answer_7);
+
+	const char *test_8 = "HUIfTQsPAh9PE048GmllH0kcDk4TAQsHThsBFkU2AB4BSWQgVB0dQzNTTmVS";
+	int result_8_len = 0;
+	const char *result_8 = decode_base64_to_ascii(test_8, &result_8_len);
+	print_buff(result_8, result_8_len, "%c");
 }
