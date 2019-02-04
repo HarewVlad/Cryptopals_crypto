@@ -9,8 +9,6 @@
 #include <stdarg.h>
 #include <math.h>
 
-#include "utils.h"
-
 const char hex_to_base64[] = 
 {
 	'A',
@@ -190,159 +188,6 @@ char digit_to_char[256] =
 	'f',
 };
 
-int my_atoi(const char *source, const char *end, int base)
-{	
-	int result = 0;
-	switch (base)
-	{
-		case 10:
-			while (source != end)
-			{
-				result *= 10;
-				result += *source++ - '0';
-			}
-			break;
-		case 2:
-			while (source != end)
-			{
-				result *= 2;
-				result += *source++ - '0';
-			}
-			break;
-		case 16:
-			while (source != end)
-			{
-				result *= 16;
-				result += char_to_digit[*source++];
-			}
-			break;
-		case 0xCC: // ascii to hex
-			while (source != end)
-			{
-				result *= 256;
-				result += *source++ & 0xF0 | *source & 0x0F;
-			}
-			break;
-		default:
-			fatal("my_atoi: incorrect base");
-	}
-	
-	return result;
-}
-
-char *encode_ascii_to_base64(const char *string)
-{
-	const char *p_string = string;
-	const size_t len = strlen(string);
-	char *result_string = malloc(len * 4);
-	char *p_result_string = result_string;
-	int shift = 2;
-	int mask = 0x03;
-	int t = 0;
-	unsigned int value = 0;
-	while (*p_string != '\0')
-	{
-		if (shift != 8)
-		{
-			value |= my_atoi(p_string, p_string + 1, 0xCC);
-			p_string++;
-		}
-		else
-			mask = 0x0;
-
-		t = value >> shift & 0x3F;
-		*result_string++ = hex_to_base64[t];
-
-		value = value & mask;
-		value <<= 8;
-
-		mask %= 0x3F;
-		mask <<= 2;
-		mask |= 0x03;
-
-		shift %= 8;
-		shift += 2;
-	}
-	t = value >> shift & 0x3F;
-	*result_string++ = hex_to_base64[t];
-
-	*result_string = '\0';
-	return p_result_string;
-}
-
-char *decode_base64_to_ascii(const char *string, int *string_len)
-{
-	size_t len = strlen(string);
-	char *result = malloc(len);
-	char *p_result = result;
-	unsigned int value = 0;
-	char ch = 0;
-	for (int i = 0; i < len - 3; i += 4)
-	{
-		value = base64_to_hex[string[i]];
-		value = (value <<= 6) | base64_to_hex[string[i + 1]];
-		value = (value <<= 6) | base64_to_hex[string[i + 2]];
-		value = (value <<= 6) | base64_to_hex[string[i + 3]];
-		*result++ = value >> 16 & 0xFF;
-		*result++ = value >> 8 & 0xFF;
-		*result++ = value & 0xFF;
-		*string_len += 3;
-	}
-	*result = '\0';
-	return p_result;
-}
-
-char *encode_hex_to_base64(const char *string)
-{
-	const char *p_string = string;
-	const size_t len = strlen(string);
-	char *result_string = malloc(len * 1.5);
-	char *p_result_string = result_string;
-	int shift = 2;
-	int mask = 0x03;
-	unsigned int value = 0;
-	int t = 0;
-	while (*p_string != '\0')
-	{
-		if (shift != 8)
-		{
-			value |= my_atoi(p_string, p_string + 2, 16);
-			p_string += 2;
-		}
-		else
-			mask = 0x0;
-
-		t = value >> shift & 0x3F;
-		*result_string++ = hex_to_base64[t];
-
-		value = value & mask;
-		value <<= 8;
-
-		mask %= 0x3F;
-		mask <<= 2;
-		mask |= 0x03;
-
-		shift %= 8;
-		shift += 2;
-	}
-	t = value >> shift & 0x3F;
-	*result_string++ = hex_to_base64[t];
-	
-	*result_string = '\0';
-	return p_result_string;
-}
-
-char *fixed_xor(const char *str1, const char *str2, size_t len) // TODO: assert(strlen(str1) == strlen(str2))
-{
-	char *result = malloc(len);
-	for (int i = 0; i < len; i++)
-	{
-		result[i] = str1[i] ^ str2[i];
-	}
-	result[len] = '\0';
-	return result;
-}
-
 double letters_score[256] = 
 {
 	['a'] = 8.167,
@@ -471,6 +316,190 @@ const char alphabet[] =
 	'/',
 };
 
+void fatal(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    printf("FATAL: ");
+    vprintf(fmt, args);
+    printf("\n");
+    va_end(args);
+    exit(1);
+}
+
+void print_buff(const char *buff, size_t len, const char *fmt)
+{
+	for (int i = 0; i < len; i++)
+	{
+		printf(fmt, buff[i]);
+	}
+}
+
+int my_atoi(const char *source, const char *end, int base)
+{	
+	int result = 0;
+	switch (base)
+	{
+		case 10:
+			while (source != end)
+			{
+				result *= 10;
+				result += *source++ - '0';
+			}
+			break;
+		case 2:
+			while (source != end)
+			{
+				result *= 2;
+				result += *source++ - '0';
+			}
+			break;
+		case 16:
+			while (source != end)
+			{
+				result *= 16;
+				result += char_to_digit[*source++];
+			}
+			break;
+		case 0xCC: // ascii to hex
+			while (source != end)
+			{
+				result *= 256;
+				result += *source++ & 0xF0 | *source & 0x0F;
+			}
+			break;
+		default:
+			fatal("my_atoi: incorrect base");
+	}
+	
+	return result;
+}
+
+size_t bytes_in_file(FILE *f)
+{
+	size_t result = 0;
+	char ch;
+	while ((ch = getc(f)) != EOF)
+	{
+		result++;
+	}
+	fseek(f, 0, SEEK_SET);
+	return result;
+}
+
+char *encode_ascii_to_base64(const char *string)
+{
+	const char *p_string = string;
+	const size_t len = strlen(string);
+	char *result_string = malloc(len * 4);
+	char *p_result_string = result_string;
+	int shift = 2;
+	int mask = 0x03;
+	int t = 0;
+	unsigned int value = 0;
+	while (*p_string != '\0')
+	{
+		if (shift != 8)
+		{
+			value |= my_atoi(p_string, p_string + 1, 0xCC);
+			p_string++;
+		}
+		else
+			mask = 0x0;
+
+		t = value >> shift & 0x3F;
+		*result_string++ = hex_to_base64[t];
+
+		value = value & mask;
+		value <<= 8;
+
+		mask %= 0x3F;
+		mask <<= 2;
+		mask |= 0x03;
+
+		shift %= 8;
+		shift += 2;
+	}
+	t = value >> shift & 0x3F;
+	*result_string++ = hex_to_base64[t];
+
+	*result_string = '\0';
+	return p_result_string;
+}
+
+char *decode_base64_to_ascii(const char *string, size_t *string_len)
+{
+	size_t len = strlen(string);
+	char *result = malloc(len);
+	char *p_result = result;
+	unsigned int value = 0;
+	char ch = 0;
+	for (int i = 0; i < len - 3; i += 4)
+	{
+		value = base64_to_hex[string[i]];
+		value = (value <<= 6) | base64_to_hex[string[i + 1]];
+		value = (value <<= 6) | base64_to_hex[string[i + 2]];
+		value = (value <<= 6) | base64_to_hex[string[i + 3]];
+		*result++ = value >> 16 & 0xFF;
+		*result++ = value >> 8 & 0xFF;
+		*result++ = value & 0xFF;
+		*string_len += 3;
+	}
+	*result = '\0';
+	return p_result;
+}
+
+char *encode_hex_to_base64(const char *string)
+{
+	const char *p_string = string;
+	const size_t len = strlen(string);
+	char *result_string = malloc(len * 1.5);
+	char *p_result_string = result_string;
+	int shift = 2;
+	int mask = 0x03;
+	unsigned int value = 0;
+	int t = 0;
+	while (*p_string != '\0')
+	{
+		if (shift != 8)
+		{
+			value |= my_atoi(p_string, p_string + 2, 16);
+			p_string += 2;
+		}
+		else
+			mask = 0x0;
+
+		t = value >> shift & 0x3F;
+		*result_string++ = hex_to_base64[t];
+
+		value = value & mask;
+		value <<= 8;
+
+		mask %= 0x3F;
+		mask <<= 2;
+		mask |= 0x03;
+
+		shift %= 8;
+		shift += 2;
+	}
+	t = value >> shift & 0x3F;
+	*result_string++ = hex_to_base64[t];
+	
+	*result_string = '\0';
+	return p_result_string;
+}
+
+char *fixed_xor(const char *str1, const char *str2, size_t len) // TODO: assert(strlen(str1) == strlen(str2))
+{
+	char *result = malloc(len);
+	for (int i = 0; i < len; i++)
+	{
+		result[i] = str1[i] ^ str2[i];
+	}
+	result[len] = '\0';
+	return result;
+}
+
 const char *decode_hex_encoded_string(const char *str, size_t len)
 {
 	assert(len % 2 == 0);
@@ -593,10 +622,8 @@ int hamming_distance(const char *str1, const char *str2)
 	return result;
 }
 
-
-int main(void)
+void ch_1()
 {
-	// Ch_1
 	const char *test_1 = "Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.";
 	const char *result_1 = encode_ascii_to_base64(test_1);
 	const char *answer_1 = "TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ5IGhpcyByZWFzb24sIGJ1dCBieSB0"
@@ -610,47 +637,87 @@ int main(void)
 	const char *result_2 = encode_hex_to_base64(test_2);
 	const char *answer_2 = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
 	assert(strcmp(result_2, answer_2) == 0);
+}
 
-	// Ch_2
-	size_t test_3_1_len = strlen("1c0111001f010100061a024b53535009181c");
-	size_t test_3_2_len = strlen("686974207468652062756c6c277320657965");
-	size_t answer_3_len = strlen("746865206b696420646f6e277420706c6179");
-	const char *test_3_1 = decode_hex_encoded_string("1c0111001f010100061a024b53535009181c", test_3_1_len);
-	const char *test_3_2 = decode_hex_encoded_string("686974207468652062756c6c277320657965", test_3_2_len);
-	const char *result_3 = fixed_xor(test_3_1, test_3_2, test_3_1_len);
-	const char *answer_3 = decode_hex_encoded_string("746865206b696420646f6e277420706c6179", answer_3_len);
-	assert(strcmp(result_3, answer_3) == 0);
+void ch_2()
+{
+	size_t test_1_len = strlen("1c0111001f010100061a024b53535009181c");
+	size_t test_2_len = strlen("686974207468652062756c6c277320657965");
+	size_t answer_len = strlen("746865206b696420646f6e277420706c6179");
+	const char *test_1 = decode_hex_encoded_string("1c0111001f010100061a024b53535009181c", test_1_len);
+	const char *test_2 = decode_hex_encoded_string("686974207468652062756c6c277320657965", test_2_len);
+	const char *result = fixed_xor(test_1, test_2, test_1_len);
+	const char *answer = decode_hex_encoded_string("746865206b696420646f6e277420706c6179", answer_len);
+	assert(strcmp(result, answer) == 0);
+}
 
-	// Ch_3
-	size_t test_4_len = strlen("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
-	size_t test_4_decoded_len = test_4_len / 2; // 2 hex - 1 character
-	const char *test_4 = decode_hex_encoded_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736", test_4_len);
-	const char *result_4 = break_single_byte_xor(test_4, test_4_decoded_len);
+void ch_3()
+{
+	size_t test_len = strlen("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
+	size_t test_decoded_len = test_len / 2; // 2 hex - 1 character
+	const char *test = decode_hex_encoded_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736", test_len);
+	const char *result = break_single_byte_xor(test, test_decoded_len);
+}
 
-	// Ch_4
+void ch_4()
+{
 	FILE *f = fopen("4.txt", "r");
 	assert(f != 0);
 
-	const char *test_5 = break_single_byte_xor_from_file(f);
+	const char *test = break_single_byte_xor_from_file(f);
+
+	fclose(f);
+}
+
+void ch_5()
+{
+	const char *test_1 = "Burning 'em, if you ain't quick and nimble";
+	const char *test_2 = "I go crazy when I hear a cymbal";
+	size_t test_1_len = strlen(test_1);
+	size_t test_2_len = strlen(test_2);
+	const char *result_1 = repeated_key_xor(test_1, "ICE", test_1_len);
+	const char *result_2 = repeated_key_xor(test_2, "ICE", test_2_len);
+}
+
+char *break_repeated_key_xor(const char *str, size_t len)
+{
+	
+}
+
+
+int main(void)
+{
+	// Ch_1
+	ch_1();
+
+	// Ch_2
+	ch_2();
+
+	// Ch_3
+	ch_3();
+
+	// Ch_4
+	ch_4();
 
 	// Ch_5
-	const char *test_6_1 = "Burning 'em, if you ain't quick and nimble";
-	const char *test_6_2 = "I go crazy when I hear a cymbal";
-	size_t test_6_1_len = strlen(test_6_1);
-	size_t test_6_2_len = strlen(test_6_2);
-	const char *result_6_1 = repeated_key_xor(test_6_1, "ICE", test_6_1_len);
-	const char *result_6_2 = repeated_key_xor(test_6_2, "ICE", test_6_2_len);
-	print_buff(result_6_1, test_6_1_len, "%c");
+	ch_5();
 
 	// Ch_6
-	const char *test_7_1 = "this is a test";
-	const char *test_7_2 = "wokka wokka!!!";
-	int result_7 = hamming_distance(test_7_1, test_7_2);
-	int answer_7 = 37;
-	assert(result_7 == answer_7);
+	const char *test_1 = "this is a test";
+	const char *test_2 = "wokka wokka!!!";
+	int result = hamming_distance(test_1, test_2);
+	int answer = 37;
+	assert(result == answer);
 
-	const char *test_8 = "HUIfTQsPAh9PE048GmllH0kcDk4TAQsHThsBFkU2AB4BSWQgVB0dQzNTTmVS";
-	int result_8_len = 0;
-	const char *result_8 = decode_base64_to_ascii(test_8, &result_8_len);
-	print_buff(result_8, result_8_len, "%c");
+	FILE *f = fopen("6.txt", "r");
+	assert(f != 0);
+
+	size_t len = bytes_in_file(f) - 1; // get rid of '='
+	char *str = malloc(len);
+	if (!fread(str, 1, len, f))
+		fatal("main: fread error");
+	str[len] = '\0';
+
+	size_t str_decoded_len = 0;
+	const char *str_decoded = decode_base64_to_ascii(str, &str_decoded_len);
 }
