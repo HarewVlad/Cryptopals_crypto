@@ -467,7 +467,23 @@ const char *break_single_byte_xor_from_file(FILE *f) // string hex encoded
 			final_result = result;
 		}
 	}
-	printf("Result - %s\n", final_result);
+
+	return final_result;
+}
+
+const char *repeated_key_xor(const char *str, const char *key)
+{
+	size_t len_str = strlen(str);
+	size_t len_key = strlen(key);
+	char *result = malloc(len_str * 2); // hex encoded
+	char *p_result = result;
+	for (int i = 0, j = 0; i < len_str; i++, j++, j %= len_key)
+	{
+		*result++ = digit_to_char[str[i] >> 4 ^ key[j] >> 4];
+		*result++ = digit_to_char[str[i] & 0xF ^ key[j] & 0xF];
+	}
+	*result = '\0';
+	return p_result;
 }
 
 
@@ -503,10 +519,19 @@ int main(void)
 	const char *result_5 = decode_hex_encoded_string(test_5);
 	const char *answer_5 = "77316?x+x413=x9x(7-6<x7>x:9;76";
 	assert(strcmp(result_5, answer_5) == 0);
-	
-	// Ch_4
+
 	FILE *f = fopen("4.txt", "r");
 	assert(f != 0);
 
-	break_single_byte_xor_from_file(f);
+	const char *test_6 = break_single_byte_xor_from_file(f);
+
+	// Ch_5
+	const char *test_7 = "Burning 'em, if you ain't quick and nimble";
+	const char *test_8 = "I go crazy when I hear a cymbal";
+	const char *result_6 = repeated_key_xor(test_7, "ICE");
+	const char *result_7 = repeated_key_xor(test_8, "ICE");
+	const char *answer_6 = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20";
+	const char *answer_7 = "0063222663263b223f30633221262b690a652126243b632469203c24212425";
+	assert(strcmp(result_6, answer_6) == 0);
+	assert(strcmp(result_7, answer_7) == 0);
 }
