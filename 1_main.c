@@ -683,7 +683,7 @@ void ch_6()
 
 	size_t str_decoded_len = 0;
 	const char *str_decoded = decode_base64_to_ascii(str, &str_decoded_len);
-	const char *result = break_repeated_key_xor(str_decoded, str_decoded_len, 2, 20);
+	const char *result = break_repeated_key_xor(str_decoded, str_decoded_len, 2, 40);
 
 	fclose(f);
 }
